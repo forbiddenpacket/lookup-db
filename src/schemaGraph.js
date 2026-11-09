@@ -3,7 +3,15 @@ export function buildSchemaGraph(tables, relationships) {
   const parsedRelationships = relationships.flatMap((relationship, index) => {
     const [source, sourceColumn, ...sourceExtra] = String(relationship.from ?? "").split(".");
     const [target, targetColumn, ...targetExtra] = String(relationship.to ?? "").split(".");
-    if (!source || !sourceColumn || sourceExtra.length || !target || !targetColumn || targetExtra.length) return [];
+    if (
+      !source ||
+      !sourceColumn ||
+      sourceExtra.length ||
+      !target ||
+      !targetColumn ||
+      targetExtra.length
+    )
+      return [];
     if (!names.has(source) || !names.has(target)) return [];
     return [{ index, source, sourceColumn, target, targetColumn }];
   });
@@ -34,7 +42,9 @@ export function buildSchemaGraph(tables, relationships) {
   }
   const colors = new Map();
   for (const [root, members] of components) {
-    const hasSelfReference = parsedRelationships.some((rel) => rel.source === rel.target && find(rel.source) === root);
+    const hasSelfReference = parsedRelationships.some(
+      (rel) => rel.source === rel.target && find(rel.source) === root,
+    );
     if (members.length < 2 && !hasSelfReference) continue;
     const seed = members.slice().sort().join("|");
     let hash = 2166136261;

@@ -5,9 +5,9 @@ function quoteIdentifier(identifier) {
 function resultRows(result) {
   return {
     columns: result.columns,
-    rows: result.values.map((values) => Object.fromEntries(
-      result.columns.map((column, index) => [column, values[index]]),
-    )),
+    rows: result.values.map((values) =>
+      Object.fromEntries(result.columns.map((column, index) => [column, values[index]])),
+    ),
   };
 }
 
@@ -21,7 +21,8 @@ function unquoteIdentifier(identifier) {
 
 function inferInsertTables(sql) {
   const tables = new Map();
-  const insertPattern = /\bINSERT(?:\s+OR\s+\w+)?\s+INTO\s+((?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[[^\]]+\]|[\w$]+))\s*\(([^)]+)\)\s*VALUES\s*\(/gi;
+  const insertPattern =
+    /\bINSERT(?:\s+OR\s+\w+)?\s+INTO\s+((?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[[^\]]+\]|[\w$]+))\s*\(([^)]+)\)\s*VALUES\s*\(/gi;
   let match;
   while ((match = insertPattern.exec(sql))) {
     const name = unquoteIdentifier(match[1]);
@@ -32,7 +33,11 @@ function inferInsertTables(sql) {
     const conflict = statement.match(/\bON\s+CONFLICT\s*\(([^)]+)\)/i);
     const table = tables.get(name) ?? { columns: new Set(), primaryKey: new Set() };
     columns.forEach((column) => table.columns.add(column));
-    if (conflict) conflict[1].split(",").map(unquoteIdentifier).forEach((column) => table.primaryKey.add(column));
+    if (conflict)
+      conflict[1]
+        .split(",")
+        .map(unquoteIdentifier)
+        .forEach((column) => table.primaryKey.add(column));
     tables.set(name, table);
   }
   return tables;
@@ -52,7 +57,10 @@ function splitSqlStatements(sql) {
       continue;
     }
     if (blockComment) {
-      if (char === "*" && next === "/") { blockComment = false; index += 1; }
+      if (char === "*" && next === "/") {
+        blockComment = false;
+        index += 1;
+      }
       continue;
     }
     if (quote) {
@@ -62,8 +70,16 @@ function splitSqlStatements(sql) {
       } else if (quote === "]" && char === "]") quote = "";
       continue;
     }
-    if (char === "-" && next === "-") { lineComment = true; index += 1; continue; }
-    if (char === "/" && next === "*") { blockComment = true; index += 1; continue; }
+    if (char === "-" && next === "-") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
     if (char === "'" || char === '"' || char === "`" || char === "[") {
       quote = char === "[" ? "]" : char;
       continue;
@@ -78,7 +94,10 @@ function splitSqlStatements(sql) {
 }
 
 function tableExists(db, name) {
-  return db.exec(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ${JSON.stringify(name)}`).length > 0;
+  return (
+    db.exec(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ${JSON.stringify(name)}`)
+      .length > 0
+  );
 }
 
 function runSqlScript(db, script) {
@@ -105,13 +124,17 @@ function createInferredTables(db, tables) {
     const columns = [...table.columns];
     const primaryKey = [...table.primaryKey].filter((column) => table.columns.has(column));
     const definitions = columns.map(quoteIdentifier);
-    if (primaryKey.length) definitions.push(`PRIMARY KEY (${primaryKey.map(quoteIdentifier).join(", ")})`);
+    if (primaryKey.length)
+      definitions.push(`PRIMARY KEY (${primaryKey.map(quoteIdentifier).join(", ")})`);
     db.run(`CREATE TABLE ${quoteIdentifier(name)} (${definitions.join(", ")})`);
   }
 }
 
 export async function openSqliteFile(SQL, file) {
-  const extension = String(file?.name ?? "").split(".").at(-1)?.toLowerCase();
+  const extension = String(file?.name ?? "")
+    .split(".")
+    .at(-1)
+    ?.toLowerCase();
   if (extension !== "db" && extension !== "sql") {
     throw new Error("Choose a .db or .sql file.");
   }
@@ -121,11 +144,15 @@ export async function openSqliteFile(SQL, file) {
   if (extension === "db") {
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (bytes.length === 0) {
-      throw new Error("This .db file is empty (0 bytes). Open the .sql seed to create a local database, or choose a populated SQLite .db file.");
+      throw new Error(
+        "This .db file is empty (0 bytes). Open the .sql seed to create a local database, or choose a populated SQLite .db file.",
+      );
     }
     const sqliteHeader = [83, 81, 76, 105, 116, 101, 32, 102, 111, 114, 109, 97, 116, 32, 51, 0];
     if (!sqliteHeader.every((byte, index) => bytes[index] === byte)) {
-      throw new Error("This file is not a SQLite database. Choose a SQLite .db file or a .sql script.");
+      throw new Error(
+        "This file is not a SQLite database. Choose a SQLite .db file or a .sql script.",
+      );
     }
     return { db: new SQL.Database(bytes), inferredTables: [] };
   }
@@ -136,10 +163,12 @@ export async function openSqliteFile(SQL, file) {
     return { db, inferredTables };
   } catch (error) {
     db.close();
-    const missingTable = error.message.match(/no such table:\s*["`\[]?([^"`\]\s.]+)["`\]]?/i)?.[1];
-    const alterTarget = script.match(/\bALTER\s+TABLE\s+(["`\[]?[\w.]+["`\]]?)/i)?.[1];
+    const missingTable = error.message.match(/no such table:\s*["`[]?([^"`\]\s.]+)["`\]]?/i)?.[1];
+    const alterTarget = script.match(/\bALTER\s+TABLE\s+(["`[]?[\w.]+["`\]]?)/i)?.[1];
     if (missingTable && alterTarget) {
-      throw new Error(`"${file.name}" is a migration, not a full database export. It tries to alter existing table "${missingTable}", but that table is not in the local database. Import a populated SQLite .db or a full SQL schema/data dump instead.`);
+      throw new Error(
+        `"${file.name}" is a migration, not a full database export. It tries to alter existing table "${missingTable}", but that table is not in the local database. Import a populated SQLite .db or a full SQL schema/data dump instead.`,
+      );
     }
     throw new Error(`Could not import SQL into the local SQLite database: ${error.message}`);
   }
@@ -152,7 +181,8 @@ export function getSqliteTables(db) {
   const names = result[0]?.values.map(([name]) => String(name)) ?? [];
   return names.map((name) => {
     const columns = db.exec(`PRAGMA table_info(${quoteIdentifier(name)})`)[0]?.values ?? [];
-    const foreignKeys = db.exec(`PRAGMA foreign_key_list(${quoteIdentifier(name)})`)[0]?.values ?? [];
+    const foreignKeys =
+      db.exec(`PRAGMA foreign_key_list(${quoteIdentifier(name)})`)[0]?.values ?? [];
     const foreignKeyColumns = new Set(foreignKeys.map((row) => String(row[3])));
     return {
       name,

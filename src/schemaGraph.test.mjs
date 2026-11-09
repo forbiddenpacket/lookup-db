@@ -21,7 +21,10 @@ test("FK edges attach to the exact source and target column handles", () => {
 test("ignores malformed or missing-table relationships", () => {
   const graph = buildSchemaGraph(
     [{ name: "orders", columns: [{ name: "customer_id" }] }],
-    [{ from: "orders.customer_id", to: "missing.id" }, { from: "bad", to: "orders.customer_id" }],
+    [
+      { from: "orders.customer_id", to: "missing.id" },
+      { from: "bad", to: "orders.customer_id" },
+    ],
   );
 
   assert.equal(graph.edges.length, 0);
