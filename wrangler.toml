@@ -1,0 +1,13 @@
+name = "lookup"
+main = "worker/src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+routes = [{ pattern = "lookup.marban.lol", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true
