@@ -1,33 +1,61 @@
-# Lookup — DB Browser (Astryx + Cloudflare Workers)
+# Lookup
 
-Real DB browser, no demo data. Pick Supabase / Postgres / MySQL, enter creds, browse tables + run SQL. All DB access happens in the Worker backend (`/api/*`), never in the browser.
+Lookup is a browser-based database explorer. Connect to Supabase, PostgreSQL, or MySQL through a Cloudflare Worker, or open a SQLite (`.db`) or SQL (`.sql`) file locally in your browser.
 
-## UI — Astryx (Meta design system)
-- React 19 + `@astryxdesign/core` + `@astryxdesign/theme-gothic` (dark-only) + Tailwind v4 token bridge
-- No header, no tabs. Just: connection bar → 2-pane (table list with C/R/U/D badges + live grid) → floating SQL dock bottom-center
-- Sidebar matches your screenshot: Search, Filters, ⛉ schema toggle, ↻ refresh, + New
-- Grid matches your screenshot: row numbers, 🔑/🔗 column markers, blue numbers, grey NULL, toolbar with Add/Delete row + `eg: id = 10` filter + Applied
-- Schema view: dotted canvas, one card per table + Relationships
+## Features
 
-## Supabase (URL + anon/service key)
-- Schema: PostgREST OpenAPI (`/rest/v1/`) → all tables + columns visible in sidebar
-- Perms per table: `service_role` = all green (bypasses RLS). `anon`/`authenticated` = probed non-destructively (impossible filter + unknown column) → C/R/U/D badges, grey/neutral = not allowed, Add/Delete disabled accordingly
-- Data: `GET /rest/v1/{table}?select=*`
-- Query: `SELECT * FROM x` translated to PostgREST; arbitrary SQL via `rpc/exec_sql` if you create it, else use Postgres type with direct connection string
+- Browse tables, columns, rows, and detected relationships.
+- Explore a schema graph and run SQL queries.
+- Import and export local SQLite databases and SQL files.
+- Filter and sort table rows, inspect table permissions, and use saved connections.
+- Connect to Supabase, PostgreSQL-compatible services, and MySQL-compatible services.
 
-## Postgres / MySQL
-- Real `information_schema` introspection (tables, columns, PK/FK, grants → C/R/U/D)
+## Requirements
 
-## Run
-```bash
+- Node.js 20 or newer and npm.
+- A Cloudflare account to deploy the Worker.
+- A database connection and credentials for hosted database features.
+
+## Run locally
+
+Install dependencies and start the frontend and Worker in separate terminals:
+
+```sh
 npm install
-npm run dev          # Vite http://localhost:5173 (proxies /api → :8787)
-npm run dev:worker   # Wrangler http://localhost:8787
-npm run deploy       # vite build + wrangler deploy
+npm run dev
+npm run dev:worker
 ```
 
-## Docs for Astryx
-```bash
-npm run astryx -- component Button
-npm run astryx -- template --list
+The frontend runs at <http://localhost:5173> and proxies `/api` requests to the Worker at port 8787.
+
+Local SQLite files are read and queried in the browser. Hosted database credentials are sent to the Worker to perform database operations. Saved connection details are kept in this browser's local storage; do not use saved connections on a shared or untrusted device.
+
+## Checks
+
+```sh
+npm test
+npm run lint
+npm run format:check
+npm run build
+```
+
+Use `npm run lint:fix` for safe automatic lint fixes and `npm run format` to format supported project files.
+
+## Deploy
+
+Update the custom-domain route in `wrangler.toml` for your Cloudflare zone, then authenticate with Wrangler and deploy:
+
+```sh
+npx wrangler login
+npm run deploy
+```
+
+The deploy script builds the frontend and deploys the Worker with the generated `dist` assets. Configure database access through the app; do not commit credentials or `.env` files.
+
+## Project structure
+
+```text
+src/             React frontend and database utilities
+worker/src/      Cloudflare Worker API
+wrangler.toml    Worker and static asset configuration
 ```
